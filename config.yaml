@@ -1,0 +1,173 @@
+row_generators_module: custom_generators
+# Vocab tables
+
+src-stats:
+  - name: age_stats
+    query: >
+      SELECT TRUNC (AVG (year_of_birth)), STDDEV(year_of_birth)
+      FROM cms_desynpuf_sample_53_large.person
+  - name: gender_stats
+    query: >
+      SELECT ROUND(COUNT(gender_concept_id)::NUMERIC / SUM(COUNT(gender_concept_id))OVER(),4) AS percentage
+      FROM cms_desynpuf_sample_53_large.person
+      GROUP BY gender_concept_id
+  - name: ethnicity_stats
+    query: >
+      SELECT COUNT(ethnicity_concept_id)
+      FROM cms_desynpuf_sample_53_large.person
+      GROUP BY ethnicity_concept_id
+  - name: race_stats
+    query: >
+      SELECT COUNT(race_concept_id)
+      FROM cms_desynpuf_sample_53_large.person
+      GROUP BY race_concept_id
+
+
+
+tables: 
+  concept: 
+    vocabulary_table: true
+  concept_ancestor:
+    vocabulary_table: true
+  vocabulary:
+    vocabulary_table: true
+  domain:
+    vocabulary_table: true
+  concept_class:
+    vocabulary_table: true
+  concept_synonym:
+    vocabulary_table: true
+  concept_relationship:
+    vocabulary_table: true
+  drug_strength:
+    vocabulary_table: true
+  relationship:
+    vocabulary_table: true
+  source_to_concept_map:
+    vocabulary_table: true
+  location: 
+    vocabulary_table: true
+  care_site:
+    vocabulary_table: true
+  provider:
+    vocabulary_table: true
+  cdm_source:
+    vocabulary_table: true
+  death:
+    row_generators:
+      - name: custom_generators.person_id_provider
+        args:
+          - dst_db_conn
+        columns_assigned: person_id
+  
+  #Person Tables
+  person: 
+  
+    row_generators: 
+      - name: custom_generators.gender_concept_provider
+        kwargs:
+          generic: generic
+          query_results: SRC_STATS["gender_stats"]
+        columns_assigned: ["gender_concept_id", "gender_source_value"]
+
+      - name: custom_generators.birth_year_provider
+        kwargs:
+          generic: generic
+          query_results: SRC_STATS["age_stats"]
+        columns_assigned: year_of_birth
+
+
+      - name: generic.numeric.integer_number
+        kwargs:
+          start: 1
+          end: 12
+        columns_assigned: month_of_birth
+
+      - name: generic.numeric.integer_number
+        kwargs:
+          start: 1
+          end: 1
+        columns_assigned: day_of_birth
+
+      - name: custom_generators.race_concept_provider
+        kwargs:
+          generic: generic
+          ethnicity_query_results: SRC_STATS["ethnicity_stats"]
+          race_query_results: SRC_STATS["race_stats"]
+        columns_assigned: ["race_concept_id", "race_source_value", "ethnicity_concept_id", "ethnicity_source_value"]
+
+      - name: custom_generators.make_null #I feel like this can be shortened down, but I am not sure how because putting them all in the columns assigned line seems to fail
+        args:
+          - dst_db_conn
+        columns_assigned: birth_datetime
+      - name: custom_generators.make_null
+        args:
+          - dst_db_conn
+        columns_assigned: provider_id
+      - name: custom_generators.make_null
+        args:
+          - dst_db_conn
+        columns_assigned: care_site_id
+      - name: custom_generators.make_null
+        args:
+          - dst_db_conn
+        columns_assigned: gender_source_concept_id
+      - name: custom_generators.make_null
+        args:
+          - dst_db_conn
+        columns_assigned: race_source_concept_id        
+      - name: custom_generators.make_null
+        args:
+          - dst_db_conn
+        columns_assigned: ethnicity_source_concept_id
+
+      - name: generic.person.password
+        kwargs:
+          length: 16
+          hashed: False
+        columns_assigned: person_source_value
+  
+  #Condition Occurrence tables
+
+  condition_occurrence:     
+    row_generators: 
+      - name: custom_generators.make_null
+        args:
+          - dst_db_conn
+        columns_assigned: condition_start_datetime
+    
+      - name: custom_generators.make_null
+        args:
+          - dst_db_conn
+        columns_assigned: condition_end_datetime
+   
+      - name: custom_generators.make_null
+        args:
+          - dst_db_conn
+        columns_assigned: stop_reason
+    
+      - name: custom_generators.make_null
+        args:
+          - dst_db_conn
+        columns_assigned: visit_detail_id
+     
+      - name: custom_generators.make_null
+        args:
+          - dst_db_conn
+        columns_assigned: condition_status_source_value
+    
+      - name: custom_generators.make_null
+        args:
+          - dst_db_conn
+        columns_assigned: condition_status_concept_id
+      - name: custom_generators.condition_dates_provider
+        kwargs:  
+          generic: generic
+        columns_assigned: ["condition_start_date", "condition_end_date"]
+        
+
+
+       
+
+
+  
